@@ -25,6 +25,9 @@ public class Client implements Runnable {
 
     // @Override
     public void run() {
+        // Client connects to the Server through TCP.
+        // Client continuously listens for incoming messages from the Server
+
         byte[] boxMsg = null;
         int boxMsgLength = 0;
         String boxMsgType = "";
@@ -105,10 +108,11 @@ public class Client implements Runnable {
                         long ipHeaderCheck = calculateCheckSum(ipbuf, ipbuf.length);
 
                         byte[] rep = echoRepMessage.getBytes();
-                        long echCheckSum = calculateCheckSum(rep, rep.length);
+                        // Echo checksum is calculated
+                        long echoCheckSum = calculateCheckSum(rep, rep.length);
 
                         byte[] toSend = echoReplyPacket(clientIpAddress, destIp, ipHeaderCheck, "REP", "0", "0", 
-                                            echCheckSum, "0", "1");
+                                            echoCheckSum, "0", "1");
 
                         System.out.println("\n===> TO SEND PACKET <===\n TSP CONTENT: " + new String(toSend) + "\n========================");
             
@@ -125,6 +129,10 @@ public class Client implements Runnable {
                     }
 
                 } else if (boxMsgType.equals("ERR")) {
+                    // If an error occured, an error package will be sent to the Client.
+                    // This error package contains a code pertaining top the type of error:
+                    // 0 - Destination Network Unreachable (external/internal trying to connect to external)
+                    // 1 - Destination Host Network Unreachable (external/internal trying to connect to internal)
                     System.out.println("\n==> ICMP-ERROR PACKAGE RECEVIED");
 
                     int Type = Integer.parseInt(boxMsgPartitions[4]);
