@@ -98,22 +98,17 @@ public class Client implements Runnable {
                     if (echoSuccess) {
                         // Here the message, to be sent after a successfull echo/ping, will be constructed
 
-                        String ipAddress = boxMsgPartitions[1] + "|" + boxMsgPartitions[0] + "|";
+                        String clientIpAddress = boxMsgPartitions[1];
+                        String destIp = boxMsgPartitions[0];
                         String ips = boxMsgPartitions[0] + boxMsgPartitions[1];
                         byte[] ipbuf  = ips.getBytes();
                         long ipHeaderCheck = calculateCheckSum(ipbuf, ipbuf.length);
 
-                        String Type = "REP";
-                        // 0 for echo reply
-                        String Code = "0|0";
-
                         byte[] rep = echoRepMessage.getBytes();
                         long echCheckSum = calculateCheckSum(rep, rep.length);
 
-                        String idSeqNo = "|0|1";
-
-                        byte[] toSend = echoReplyPacket(ipAddress, ipHeaderCheck , new String("|" + Type + "|" + Code + "|")
-                                            , echCheckSum, idSeqNo);
+                        byte[] toSend = echoReplyPacket(clientIpAddress, destIp, ipHeaderCheck, "REP", "0", "0", 
+                                            echCheckSum, "0", "1");
 
                         System.out.println("\n===> TO SEND PACKET <===\n TSP CONTENT: " + new String(toSend) + "\n========================");
             
@@ -158,7 +153,7 @@ public class Client implements Runnable {
                         // Here we display the incomming message and we verify whether the message
                         // receieved is complete and correct
                     
-                        System.out.println("\n=> MESSAGE: " + boxMsgPartitions[4] + "\n FROM " + boxMsgPartitions[0] + "\n");
+                        System.out.println("\n=> MESSAGE: " + boxMsgPartitions[4] + "\n   FROM " + boxMsgPartitions[0] + "\n");
 
                         byte[] msg = boxMsgPartitions[4].getBytes();
 
@@ -425,16 +420,13 @@ public class Client implements Runnable {
                 byte[] ip = ipAddress.getBytes();
                 long ipCheckSum = calculateCheckSum(ip, ip.length);
 
-                String pacTypeCode = "|REQ|8|0|";
-
                 byte[] buf = echoReqMessage.getBytes();
-                long echCh = calculateCheckSum(buf, buf.length);
-
-                String idSeq = "|77|0";
+                long echChecksum = calculateCheckSum(buf, buf.length);
 
                 // src | dest | checkSum | packetType | Type | Code | checksum | identifier | seq-number
-                byte[] toSend = echoReqPacket((new String(clientIpAddress + "|" + destIp + "|")),
-                                 ipCheckSum, pacTypeCode, echCh, idSeq);
+                byte[] toSend = echoReqPacket(clientIpAddress, destIp, ipCheckSum, "REQ", "8", "0", 
+                                    echChecksum, "77", "0");
+
                 System.out.println("\n ==> PING SENDING PACKET CONTAINS: " + new String(toSend));
 
                 try {
@@ -560,42 +552,56 @@ public class Client implements Runnable {
         return packet;
     }
 
-    private static boolean isValidIp(String tocheck) {
-
-        String a[] = tocheck.split("[.]"); 
-        for (String s : a) { 
-            int i = Integer.parseInt(s); 
-            if (s.length() > 3 || i < 0 || i > 255) { 
-                return false; 
-            } 
-            if (s.length() > 1 && i == 0) 
-                return false; 
-            if (s.length() > 1 && i != 0
-                && s.charAt(0) == '0') 
-                return false; 
-        } 
-  
-        return true; 
+    private static boolean isValidIp(String ip) {
+        String partitions[] = ip.split("[.]");
+        boolean isValid = true;
         
+        for (String partition : partitions) {
+            int i = Integer.parseInt(partition); 
+            
+            if (( i < 0 ) || ( partition.length() > 3 ) || ( i > 255 )) { 
+                isValid = false; 
+            }
+
+            if (( partition.length() > 1 ) && ( i == 0 )) {
+                isValid = false;
+            }
+
+            if (( partition.length() > 1 ) && ( i != 0 ) && ( partition.charAt(0) == '0' )) {
+                isValid = false; 
+            } 
+        }
+  
+        return isValid;
     }
 
     /**
      * echo request packet format: src | dest | checkSum | packetType | Type | Code | checksum | identifier | seq-number 
-     **/ 
-    private static byte[] echoReqPacket(String idAddrs, long ipCheckSum, 
-        String pacTypeCode, long echCh, String idSeq) {
+     **/
+    private static byte[] echoReqPacket(String srcIp, String destIp, long ipCheckSum, 
+        String pacType, String Type, String Code, long echCheckSum, String Identifier, String seqNum) {
 
-        byte[] first = idAddrs.getBytes();
-        byte[] third = pacTypeCode.getBytes();
-        byte[] fifth = idSeq.getBytes();
+        byte[] src = (srcIp + "|").getBytes();
+        byte[] dest = (destIp + "|").getBytes();
+        byte[] packetType = ("|" + pacType + "|").getBytes();
+        byte[] type = (Type + "|").getBytes();
+        byte[] code = (Code + "|").getBytes();
+        byte[] identifier = ("|" + Identifier + "|").getBytes();
+        byte[] sequenceNumber = seqNum.getBytes();
 
-        int len = first.length + third.length + fifth.length + 2 + 2;
+        int len = src.length + dest.length + packetType.length + type.length + code.length + 
+                    identifier.length + sequenceNumber.length + 2 + 2;
         byte[] packet = new byte[len];
 
         int j = 0;
-                    
-        for (int i = 0; i < first.length; i++) {
-            packet[j] = first[i];
+
+        for (int i = 0; i < src.length; i++) {
+            packet[j] = src[i];
+            j++;
+        }
+
+        for (int i = 0; i < dest.length; i++) {
+            packet[j] = dest[i];
             j++;
         }
 
@@ -604,18 +610,33 @@ public class Client implements Runnable {
         packet[j] = (byte) (ipCheckSum);
         j++;
     
-        for (int i = 0; i < third.length; i++) {
-            packet[j] = third[i];
+        for (int i = 0; i < packetType.length; i++) {
+            packet[j] = packetType[i];
             j++;
         }
 
-        packet[j] = (byte) (echCh >> 8);
+        for (int i = 0; i < type.length; i++) {
+            packet[j] = type[i];
+            j++;
+        }
+
+        for (int i = 0; i < code.length; i++) {
+            packet[j] = code[i];
+            j++;
+        }
+
+        packet[j] = (byte) (echCheckSum >> 8);
         j++;
-        packet[j] = (byte) (echCh);
+        packet[j] = (byte) (echCheckSum);
         j++;
 
-        for (int i = 0; i < fifth.length; i++) {
-            packet[j] = fifth[i];
+        for (int i = 0; i < identifier.length; i++) {
+            packet[j] = identifier[i];
+            j++;
+        }
+
+        for (int i = 0; i < sequenceNumber.length; i++) {
+            packet[j] = sequenceNumber[i];
             j++;
         }
 
@@ -640,42 +661,68 @@ public class Client implements Runnable {
     /**
      * echo reply packetformat: src | dest | checkSum | packetType | Type | Code | checksum | identifier | seq-number
      **/
-    private static byte[] echoReplyPacket(String ipAddtypeCode, 
-        long ipHeaderCheck, String typeCode, long echCheckSum, String idSeqNo) {
+    private static byte[] echoReplyPacket(String srcIp, String destIp, long ipCheckSum, String pacType,
+                             String Type, String Code, long echoCheckSum, String Identifier, String seqNum) {
 
-        byte[] first = ipAddtypeCode.getBytes();
-        byte[] third = typeCode.getBytes();
-        byte[] fifth = idSeqNo.getBytes();
+        byte[] src = (srcIp + "|").getBytes();
+        byte[] dest = (destIp + "|").getBytes();
+        byte[] packetType = ("|" + pacType + "|").getBytes();
+        byte[] type = (Type + "|").getBytes();
+        byte[] code = (Code + "|").getBytes();
+        byte[] identifier = ("|" + Identifier + "|").getBytes();
+        byte[] sequenceNumber = seqNum.getBytes();
 
-        int len = first.length +  2 + third.length  + 2 + fifth.length;
+        int len = src.length + dest.length + packetType.length + type.length + code.length + 
+                    identifier.length + sequenceNumber.length + 2 + 2;
         byte[] packet = new byte[len];
 
         int j = 0;
                     
-        for (int i = 0; i < first.length; i++) {
-            packet[j] = first[i];
+        for (int i = 0; i < src.length; i++) {
+            packet[j] = src[i];
             j++;
         }
 
-        packet[j] = (byte) (ipHeaderCheck >> 8);
-        j++;
-        packet[j] = (byte) (ipHeaderCheck);
-        j++;
-
-        for (int i = 0; i < third.length; i++) {
-            packet[j] = third[i];
+        for (int i = 0; i < dest.length; i++) {
+            packet[j] = dest[i];
             j++;
         }
 
-        packet[j] = (byte) (echCheckSum >> 8);
+        packet[j] = (byte) (ipCheckSum >> 8);
         j++;
-        packet[j] = (byte) (echCheckSum);
+        packet[j] = (byte) (ipCheckSum);
+        j++;
+
+        for (int i = 0; i < packetType.length; i++) {
+            packet[j] = packetType[i];
+            j++;
+        }
+
+        for (int i = 0; i < type.length; i++) {
+            packet[j] = type[i];
+            j++;
+        }
+
+        for (int i = 0; i < code.length; i++) {
+            packet[j] = code[i];
+            j++;
+        }
+
+        packet[j] = (byte) (echoCheckSum >> 8);
+        j++;
+        packet[j] = (byte) (echoCheckSum);
         j++;
     
-        for (int i = 0; i < fifth.length; i++) {
-            packet[j] = fifth[i];
+        for (int i = 0; i < identifier.length; i++) {
+            packet[j] = identifier[i];
             j++;
         }
+
+        for (int i = 0; i < sequenceNumber.length; i++) {
+            packet[j] = sequenceNumber[i];
+            j++;
+        }
+
         return packet;
     }
 
