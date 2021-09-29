@@ -429,11 +429,12 @@ public class Client implements Runnable {
                 long ipCheckSum = calculateCheckSum(ip, ip.length);
 
                 byte[] buf = echoReqMessage.getBytes();
-                long echChecksum = calculateCheckSum(buf, buf.length);
+                // Echo check sum is constructed using the echo request message
+                long echoChecksum = calculateCheckSum(buf, buf.length);
 
                 // src | dest | checkSum | packetType | Type | Code | checksum | identifier | seq-number
                 byte[] toSend = echoReqPacket(clientIpAddress, destIp, ipCheckSum, "REQ", "8", "0", 
-                                    echChecksum, "77", "0");
+                                    echoChecksum, "77", "0");
 
                 System.out.println("\n ==> PING SENDING PACKET CONTAINS: " + new String(toSend));
 
