@@ -4,8 +4,6 @@ import java.io.*;
 import java.net.*;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.zip.CRC32;
-import java.util.zip.Checksum;
 
 public class ClientThread extends Thread{
 	Socket client;
@@ -13,12 +11,12 @@ public class ClientThread extends Thread{
 	DataInputStream inData;
 	DataOutputStream outData;
 	byte[] receive = null;
-	
+
 	public ClientThread(Socket soc, String ip) {
 		client = soc;
 		fake_ip = ip;
 	}
-	
+
 	public void run() {
 		try {
 			inData = new DataInputStream(client.getInputStream());
@@ -38,15 +36,21 @@ public class ClientThread extends Thread{
 		} catch (Exception e) {
 			clientRemove(this.fake_ip);
 		}
-		
+
 	}
-	
-	private long getCRC32(byte[] raw) {
-		Checksum chkSum = new CRC32();
-		chkSum.update(raw, 0, raw.length);
-		return chkSum.getValue();
+
+	private long calCheckSum(byte[] raw, int length) {
+		int i = 0;
+		long sum = 0;
+		while (length > 0) {
+			sum += (raw[i++]&0xff) << 8;
+			if ((--length)==0) break;
+			sum += (raw[i++]&0xff);
+			--length;
+		}
+		return (~((sum & 0xFFFF)+(sum >> 16))) & 0xFFFF;
 	}
-	
+
 	private static synchronized void clientRemove(String candidateKey) {
 		String ip = candidateKey.split(":")[0];
 		ClientInfo candidateClient = NAT.table.get(candidateKey);
@@ -63,7 +67,7 @@ public class ClientThread extends Thread{
 		NAT.activeClients.remove(candidateKey);
 		NAT.table.remove(candidateKey);
 	}
-	
+
 	private void preparePacket(String[] msg) {
 		ClientInfo src = null, dest = null;
 		ClientInfo portFwd = new ClientInfo("internal", "", "", "", 0, 0);
@@ -113,9 +117,10 @@ public class ClientThread extends Thread{
 			System.out.println("\nERROR: PACKET SEND FAILED");
 		}
 	}
-	
+
 	public void sendPacket(String type, String[] msg, ClientInfo record) {
 		DataOutputStream recvStream;
+		DataOutputStream sendStream;
 		try {
 			if (type.equals("ERR0") || type.equals("ERR1")) {
 				int code = Integer.parseInt(type.substring(3));
@@ -128,7 +133,7 @@ public class ClientThread extends Thread{
 				} else {
 					buf = ("8 Echo Request").getBytes();
 				}
-				long Check = getCRC32(buf);
+				long Check = calCheckSum(buf, buf.length);
 				byte[] echoCheck = new byte[2];
 				echoCheck[0] = (byte) (Check >> 8);
 				echoCheck[1] = (byte) Check;
@@ -149,7 +154,7 @@ public class ClientThread extends Thread{
 				}
 			} else if (type.equals("MSG") || type.equals("ACK")) {
 				byte[] reply = msg[4].getBytes();
-				long Check = getCRC32(reply);
+				long Check = calCheckSum(reply, reply.length);
 				byte[] echoCheck = new byte[2];
 				echoCheck[0] = (byte) (Check >> 8);
 				echoCheck[1] = (byte) Check;
@@ -168,7 +173,7 @@ public class ClientThread extends Thread{
 			return;
 		}
 	}
-	
+
 	private static void sendErrPacket(String[] msg, int code) throws IOException {
 		DataOutputStream sendStream = NAT.activeClients.get(msg[0]);
 		String dropped = String.format("%s|%s|%s|ERR|3|%d|", msg[0],msg[1],msg[2],code);
@@ -176,7 +181,7 @@ public class ClientThread extends Thread{
 		sendStream.write(dropPack.length);
 		sendStream.write(dropPack);
 	}
-	
+
 	private static String portMatch(String port) {
 		for (Map.Entry<String, ClientInfo> record : NAT.table.entrySet()) {
 			if (record.getValue().getPort().equals(port)) {
