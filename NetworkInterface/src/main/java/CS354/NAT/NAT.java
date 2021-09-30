@@ -146,8 +146,7 @@ public class NAT {
 					return result;
 			default:
 				System.out.println("\nUNKNOWN COMMAND\n");
-				break;
-			}
+            }
     	}
     }
 }
