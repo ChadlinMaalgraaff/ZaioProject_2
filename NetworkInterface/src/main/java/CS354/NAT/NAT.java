@@ -38,7 +38,7 @@ public class NAT {
         System.out.printf("NAT-box info:\nIP Address: %s\nMAC Address: %s\n\n", IP, MAC);
         
         try {
-        	server = new ServerSocket(8002,0,InetAddress.getByName("127.0.0.1"));
+        	server = new ServerSocket(8002);
         } catch (Exception e) {
 			System.err.println(e);
 		}
@@ -78,10 +78,14 @@ public class NAT {
     	while (true) {
     		byte[] raw = new byte[256];
     		byte[] reply = new byte[256];
+    		byte[] greet = ("HELLO").getBytes();
     		DatagramPacket packet = new DatagramPacket(raw, raw.length);
     		sock.receive(packet);
     		int port = packet.getPort();
     		InetAddress addr = packet.getAddress();
+    		System.out.println("addr: "+addr.getHostAddress()+" - name: "+addr.getHostName());
+    		DatagramPacket handshake = new DatagramPacket(greet, greet.length, addr, port);
+    		sock.send(handshake);
     		
     		switch (raw[0]) {
 			case 'd':
