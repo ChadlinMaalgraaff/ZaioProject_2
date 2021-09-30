@@ -4,6 +4,8 @@ import java.io.*;
 import java.net.*;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.zip.CRC32;
+import java.util.zip.Checksum;
 
 public class ClientThread extends Thread{
 	Socket client;
@@ -39,16 +41,10 @@ public class ClientThread extends Thread{
 		
 	}
 	
-	private long calCheckSum(byte[] raw, int length) {
-		int i = 0;
-		long sum = 0;
-		while (length > 0) {
-			sum += (raw[i++]&0xff) << 8;
-			if ((--length)==0) break;
-			sum += (raw[i++]&0xff);
-			--length;
-		}
-		return (~((sum & 0xFFFF)+(sum >> 16))) & 0xFFFF;
+	private long getCRC32(byte[] raw) {
+		Checksum chkSum = new CRC32();
+		chkSum.update(raw, 0, raw.length);
+		return chkSum.getValue();
 	}
 	
 	private static synchronized void clientRemove(String candidateKey) {
@@ -120,7 +116,6 @@ public class ClientThread extends Thread{
 	
 	public void sendPacket(String type, String[] msg, ClientInfo record) {
 		DataOutputStream recvStream;
-		DataOutputStream sendStream;
 		try {
 			if (type.equals("ERR0") || type.equals("ERR1")) {
 				int code = Integer.parseInt(type.substring(3));
@@ -133,7 +128,7 @@ public class ClientThread extends Thread{
 				} else {
 					buf = ("8 Echo Request").getBytes();
 				}
-				long Check = calCheckSum(buf, buf.length);
+				long Check = getCRC32(buf);
 				byte[] echoCheck = new byte[2];
 				echoCheck[0] = (byte) (Check >> 8);
 				echoCheck[1] = (byte) Check;
@@ -154,7 +149,7 @@ public class ClientThread extends Thread{
 				}
 			} else if (type.equals("MSG") || type.equals("ACK")) {
 				byte[] reply = msg[4].getBytes();
-				long Check = calCheckSum(reply, reply.length);
+				long Check = getCRC32(reply);
 				byte[] echoCheck = new byte[2];
 				echoCheck[0] = (byte) (Check >> 8);
 				echoCheck[1] = (byte) Check;

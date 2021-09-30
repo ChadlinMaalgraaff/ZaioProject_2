@@ -35,15 +35,14 @@ public class NAT {
         activeClients = new ConcurrentHashMap<String, DataOutputStream>();
         IP = IPUtils.NAT_IP();
         MAC = macs.remove(0);
-        //macs.remove(0);
-        System.out.println("MAC: "+MAC);
+        System.out.printf("NAT-box info:\nIP Address: %s\nMAC Address: %s\n\n", IP, MAC);
         
         try {
         	server = new ServerSocket(8002);
         } catch (Exception e) {
 			System.err.println(e);
 		}
-        System.out.println("Server Start");
+        System.out.println("### SERVER RUNNING ###");
         
         DatagramSocket socket = new DatagramSocket(8888);
         TableThread manager = new TableThread();
@@ -79,10 +78,14 @@ public class NAT {
     	while (true) {
     		byte[] raw = new byte[256];
     		byte[] reply = new byte[256];
+    		byte[] greet = ("HELLO").getBytes();
     		DatagramPacket packet = new DatagramPacket(raw, raw.length);
     		sock.receive(packet);
     		int port = packet.getPort();
     		InetAddress addr = packet.getAddress();
+    		System.out.println("addr: "+addr.getHostAddress()+" - name: "+addr.getHostName());
+    		DatagramPacket handshake = new DatagramPacket(greet, greet.length, addr, port);
+    		sock.send(handshake);
     		
     		switch (raw[0]) {
 			case 'd':
