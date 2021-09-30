@@ -19,7 +19,7 @@ public class NAT {
     public static ArrayList<String> macs;
     public static ArrayList<String> ports;
     public static ArrayList<String> rand;
-    
+
     public static Map<String, ClientInfo> table;
     public static ConcurrentHashMap<String, DataOutputStream> activeClients;
     public static ArrayList<String> clients = new ArrayList<String>();
@@ -30,24 +30,24 @@ public class NAT {
         refresh_interval = Long.parseLong(args[0]);
         pool_size = Integer.parseInt(args[1]);
         initialise();
-        
+
         table = new HashMap<String, ClientInfo>();
         activeClients = new ConcurrentHashMap<String, DataOutputStream>();
         IP = IPUtils.NAT_IP();
         MAC = macs.remove(0);
         System.out.printf("NAT-box info:\nIP Address: %s\nMAC Address: %s\n\n", IP, MAC);
-        
+
         try {
-        	server = new ServerSocket(8000,0,InetAddress.getByName("127.0.0.1"));
+        	server = new ServerSocket(8000);
         } catch (Exception e) {
 			System.err.println(e);
 		}
         System.out.println("### SERVER RUNNING ###");
-        
+
         DatagramSocket socket = new DatagramSocket(8888);
         TableThread manager = new TableThread();
         manager.start();
-        
+
         while (true) {
         	if (DHCP_Check(socket)) {
         		try {
@@ -72,7 +72,7 @@ public class NAT {
         macs = IPUtils.MAC_Pool(pool_size);
         rand = IPUtils.random_Pool(pool_size);
     }
-    
+
     private static boolean DHCP_Check(DatagramSocket sock) throws IOException {
     	System.out.println("DHCP Called");
     	while (true) {
@@ -82,9 +82,9 @@ public class NAT {
     		sock.receive(packet);
     		int port = packet.getPort();
     		InetAddress addr = packet.getAddress();
-    		
-    		switch (raw[0]) {
-			case 'd':
+            String real_ip, macAddr;
+            ClientInfo record;
+    		if (raw[0] == 'd') {
 				if(activeClients.size() == pool_size) {
 					reply[0] = 'd';
 				} else {
@@ -92,13 +92,11 @@ public class NAT {
 				}
 				packet = new DatagramPacket(reply, reply.length, addr, port);
 				sock.send(packet);
-				break;				
-			case 'm':
+            } else if (raw[0] == 'm') {
 				reply = String.format("m|%s|%s", MAC, IP).getBytes();
 				packet = new DatagramPacket(reply, reply.length, addr, port);
 				sock.send(packet);
-				break;
-			case 'n':
+            } else if (raw[0] == 'n') {
 				String ip = "", mac = "", p = "";
 				if(activeClients.size() == pool_size) {
 					reply[0] = 'f';
@@ -110,24 +108,22 @@ public class NAT {
 				}
 				packet = new DatagramPacket(reply, reply.length, addr, port);
 				sock.send(packet);
-				break;
-			case 'a':
+            } else if (raw[0] == 'a') {
 				String content = new String(packet.getData());
 				String[] setup = content.split("\\|");
 				String status = setup[1].trim();
 				FakeIP = setup[2].trim();
-				String real_ip = setup[3].trim();
-				String macAddr = setup[4].trim();
+				real_ip = setup[3].trim();
+				macAddr = setup[4].trim();
 				String[] ip_port = FakeIP.split(":");
-				ClientInfo record = new ClientInfo(status, macAddr, real_ip, ip_port[1], refresh_interval, System.nanoTime());
+				record = new ClientInfo(status, macAddr, real_ip, ip_port[1], refresh_interval, System.nanoTime());
 				table.put(FakeIP, record);
 				internal.remove(ip_port[0]);
 				macs.remove(macAddr);
 				ports.remove(ip_port[1]);
-				return true;
-			case 'r':
+            } else if (raw[0] == 'r') {
 				return false;
-			case 'e':
+            } else if (raw[0] == 'e') {
 					boolean result;
 					if (activeClients.size() == pool_size) {
 						reply[0] = 'f';
@@ -144,9 +140,8 @@ public class NAT {
 					packet = new DatagramPacket(reply, reply.length, addr, port);
 					sock.send(packet);
 					return result;
-			default:
+            } else {
 				System.out.println("\nUNKNOWN COMMAND\n");
-				break;
 			}
     	}
     }
