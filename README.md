@@ -5,7 +5,8 @@
 2. Thomas Trezise - 19769679
 
 ## Description:
-*Placeholder text*
+mvn exec:java -Dexec.mainClass="CS354.NAT.NAT" -Dexec.args="10 10"
+mvn exec:java -Dexec.mainClass="CS354.NAT.Client" -Dexec.args="i"
 
 ## Usage:
 *Placeholder text*
