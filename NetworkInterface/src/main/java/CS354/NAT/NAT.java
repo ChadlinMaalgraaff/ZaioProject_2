@@ -43,11 +43,15 @@ public class NAT {
 		}
         
         DatagramSocket socket = new DatagramSocket(8888);
+        TableThread manager = new TableThread();
+        manager.start();
         
         while (true) {
         	if (DHCP_Check(socket)) {
         		try {
         			client = server.accept();
+        			ClientThread user = new ClientThread(client, FakeIP);
+        			user.start();
         		} catch (Exception e) {}
         	} else {
         		System.out.printf("NAT-box cannot accept more connections\n\n");
