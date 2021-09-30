@@ -5,6 +5,8 @@ import java.net.*;
 import java.awt.*;
 import javax.swing.*;
 import java.awt.event.*;
+import java.util.zip.CRC32;
+import java.util.zip.Checksum;
 
 public class Client implements Runnable {
 
@@ -36,12 +38,12 @@ public class Client implements Runnable {
 
         echoReqMessage = "8 Echo Request";
         echoRepMessage = "0 Echo Reply";
-        
+
         try {
-            
+
             // dataSoc = new DatagramSocket();
             // byte[] buf = "TESTING".getBytes();
-    
+
             // // Send
             // InetAddress iAdd = InetAddress.getByName("255.255.255.255");
             // DatagramPacket dataPack = new DatagramPacket(buf, buf.length, iAdd, 8002);
@@ -82,7 +84,7 @@ public class Client implements Runnable {
                 inputStream.read(boxMsg);
 
                 // Partition the received box message, and store each piece
-                // of data in a separate cell in the boxMsgPartitions array 
+                // of data in a separate cell in the boxMsgPartitions array
                 boxMsgPartitions = new String(boxMsg).split("\\|");
                 System.out.println("\n=== BOX MESSAGE CONTENT ===\n" + new String(boxMsg) + "\n===========================\n");
 
@@ -101,10 +103,10 @@ public class Client implements Runnable {
 
                     // Here we check if our Echo was succesfully sent and received.
                     // We use a hard coded, general, echo message. Then, using the
-                    // calculateCheckSum function, we are able to conclude whether
+                    // getCRC32 function, we are able to conclude whether
                     // the echo/ping request was successful.
                     byte[] echoBuf  = ("8 Echo Request").getBytes();
-                    long ipCheckSum = calculateCheckSum(echoBuf, echoBuf.length);
+                    long ipCheckSum = getCRC32(echoBuf);
                     byte[] echoCheck = new byte[2];
 
                     // Checksum added to header
@@ -125,17 +127,17 @@ public class Client implements Runnable {
                         String destIp = boxMsgPartitions[0];
                         String ips = boxMsgPartitions[0] + boxMsgPartitions[1];
                         byte[] ipbuf  = ips.getBytes();
-                        long ipHeaderCheck = calculateCheckSum(ipbuf, ipbuf.length);
+                        long ipHeaderCheck = getCRC32(ipbuf);
 
                         byte[] rep = echoRepMessage.getBytes();
                         // Echo checksum is calculated
-                        long echoCheckSum = calculateCheckSum(rep, rep.length);
+                        long echoCheckSum = getCRC32(rep);
 
-                        byte[] toSend = echoReplyPacket(clientIpAddress, destIp, ipHeaderCheck, "REP", "0", "0", 
+                        byte[] toSend = echoReplyPacket(clientIpAddress, destIp, ipHeaderCheck, "REP", "0", "0",
                                             echoCheckSum, "0", "1");
 
                         System.out.println("\n===> TO SEND PACKET <===\n TSP CONTENT: " + new String(toSend) + "\n========================");
-            
+
                         try {
                             // First send length, then the echo reply message
                             outputStream.write(toSend.length);
@@ -180,20 +182,20 @@ public class Client implements Runnable {
                     if (!boxMsgPartitions[0].equals(clientIpAddress) && (boxMsgPartitions[1].equals(clientIpAddress))) {
                         // Here we display the incomming message and we verify whether the message
                         // receieved is complete and correct
-                    
+
                         System.out.println("\n=> MESSAGE: " + boxMsgPartitions[4] + "\n   FROM " + boxMsgPartitions[0] + "\n");
 
                         byte[] msg = boxMsgPartitions[4].getBytes();
 
                         // Create checksum
-                        long checksum = calculateCheckSum(msg, msg.length);
+                        long checksum = getCRC32(msg);
                         byte[] check = new byte[2];
                         check[0] = (byte) (checksum >> 8);
                         check[1] = (byte) (checksum);
 
                         String srcCheck = boxMsgPartitions[2].trim();
                         String msgCh = new String(check).trim();
-              
+
                         if (!(msgCh.equals(srcCheck))) {
                             // If our calculated checksum does not correspond to the src's checksum,
                             // the notify user of such.
@@ -233,7 +235,7 @@ public class Client implements Runnable {
         String hostIp = "127.0.0.1"/*"100.78.213.61"*/;
         int port = 8888;
         String proceed = "";
-        
+
         try
         {
             dataSoc = new DatagramSocket();
@@ -241,7 +243,7 @@ public class Client implements Runnable {
 
             // dataSoc = new DatagramSocket();
             // byte[] buf = "TESTING".getBytes();
-    
+
             // // Send
             // InetAddress iAdd = InetAddress.getByName("100.64.24.126");
             // DatagramPacket dataPack = new DatagramPacket(buf, buf.length, iAdd, 8002);
@@ -256,20 +258,20 @@ public class Client implements Runnable {
             // dataSoc.receive(receivePacket);
             // System.out.println("Discovery response received!" + receivePacket.getAddress() + ":" + receivePacket.getPort());
             // System.out.println("Past receive");
-            
+
             // Set the chosen server status
             if (status == "internal") {
                 buf[0] = 'd';
             } else {
                 buf[0] = 'e';
             }
-            
+
             InetAddress iAdd = InetAddress.getByName(hostIp);
             DatagramPacket dataPack = new DatagramPacket(buf, buf.length, iAdd, port);
-            
+
             // Send the Server Type choice of the client to the server
             dataSoc.send(dataPack);
-            
+
             System.out.println("===> DHCP CLIENT STARTED <===");
             while (true) {
 
@@ -278,27 +280,27 @@ public class Client implements Runnable {
 
                 // We continuously receive feedback from the server
                 dataSoc.receive(dataPack);
-    
+
                 String data = new String(dataPack.getData());
                 System.out.println("\n==> RECV PACKET CONTENT: " + data);
 
-    
+
                 if (dataBuf[0] == 'f') {
-                    
+
                     System.out.println("\n==> NO ADDRESSES AVAILABLE IN THE POOL <==");
                     // We set the proceed variable to false, and inform the DHCP Server
                     // of such
 
                     serverPort = dataPack.getPort();
                     serverAddress = dataPack.getAddress();
-                    
+
                     /// Prompt the DHCP Server to print out an "EMPTY POOL" error and
-                    //  discontinue communication with this DHCP Client 
+                    //  discontinue communication with this DHCP Client
                     dataBuf[0] = 'r';
                     dataPack = new DatagramPacket(dataBuf, dataBuf.length, serverAddress, serverPort);
                     dataSoc.send(dataPack);
                     proceed = "no";
-                    break; 
+                    break;
 
                 } else if (dataBuf[0] == 'd') {
                     System.out.println("\n=== SERVER FOUND. REQUEST MAC ADDRESS ===");
@@ -308,25 +310,25 @@ public class Client implements Runnable {
                     serverAddress = dataPack.getAddress();
 
                     /* ------- execute ARP ---------*/
-                    
+
                     System.out.println("\n==> REQUEST MAC ADDRESS");
 
                     // Request DHCP Server's Mac Address
                     dataBuf[0] = 'm';
                     dataPack = new DatagramPacket(dataBuf, dataBuf.length, serverAddress, serverPort);
                     dataSoc.send(dataPack);
-                    
+
                     System.out.println("\n==> REQUEST SENT");
 
                 } else if (dataBuf[0] == 'm') {
                     System.out.println("\n==> MAC ADDR RECEIVED");
                     // Received DHCP Server's Mac Address.
-                    
+
                     // Extract the DHCP Server's Ip and Mac Address from the response data
                     String[] split = data.split("\\|");
                     serverIpAddress = split[1]; //split[1];
                     serverMacAddress = split[2]; //split[2];
-                    
+
                     System.out.println("\n==> SERVER MAC ADDRESS: " + serverMacAddress + "\n==> SERVER IP ADDRESS: " + serverIpAddress);
 
                     // Acknowledge receipt of DHCP Server's Mac Address
@@ -343,20 +345,20 @@ public class Client implements Runnable {
                     clientIpAddress = split[1];
                     clientMacAddress = split[2];
 
-                    System.out.println("\n==> CLIENT ASSIGNED MAC Address: " + clientMacAddress + 
+                    System.out.println("\n==> CLIENT ASSIGNED MAC Address: " + clientMacAddress +
                                         "\n==> CLIENT ASSIGNED IP Address: " + clientIpAddress + "\n");
 
                     boolean dataComplete = ( !serverMacAddress.isEmpty() )&&( !serverIpAddress.isEmpty() )
                                                 &&( !clientMacAddress.isEmpty() )&&( !clientIpAddress.isEmpty());
 
                     // Send DHCP Server an acknowledgement that all the data was correctly received
-                    if (dataComplete) { 
+                    if (dataComplete) {
                         dataBuf = new String("a|internal|" + clientIpAddress + "|" + hostIp + "|"+ clientMacAddress).getBytes();
                         dataPack = new DatagramPacket(dataBuf, dataBuf.length, serverAddress, serverPort);
-                        
-                        dataSoc.send(dataPack);                        
+
+                        dataSoc.send(dataPack);
                     }
-                    
+
                     break;
                 } else if (dataBuf[0] == 'c') {
                     System.out.println("\n==> EXTERNAL CLIENT CAN CONNECT <==");
@@ -379,12 +381,12 @@ public class Client implements Runnable {
                 }
 
             }
-  
+
         } catch (IOException e) {
             System.out.println(e.toString());
         } finally {
-            if (dataSoc != null) { 
-                dataSoc.close(); 
+            if (dataSoc != null) {
+                dataSoc.close();
             }
         }
 
@@ -394,20 +396,20 @@ public class Client implements Runnable {
     private void homeGUI(String clientDetails) {
 
         home = new JFrame(clientDetails);
-        home.setSize(100, 110);    
-        home.setLayout(null);    
+        home.setSize(100, 110);
+        home.setLayout(null);
 
         JButton messageButton = new JButton("MESSAGE");
         messageButton.setBounds(0, 0, 100, 30);
 
         JButton pingButton = new JButton("PING");
-        pingButton.setBounds(0, 40, 100, 30); 
+        pingButton.setBounds(0, 40, 100, 30);
 
         home.add(messageButton);
         home.add(pingButton);
 
         messageButton.addActionListener(new ActionListener() {
-           
+
             // @Override
             public void actionPerformed(ActionEvent e){
                 System.out.println("MESSAGING");
@@ -416,7 +418,7 @@ public class Client implements Runnable {
         });
 
         pingButton.addActionListener(new ActionListener() {
-            
+
             // @Override
             public void actionPerformed(ActionEvent arg0){
                 System.out.println("PINGING");
@@ -452,26 +454,26 @@ public class Client implements Runnable {
 
             boolean validIp = false;
             String[] split = destIp.split(":");
-            
+
             if (split.length != 2) {
                 validIp = isValidIp(destIp);
             } else {
                 validIp = isValidIp(split[0]);
             }
-   
+
             if (validIp != false) {
                 // Here we are sending the echo request
 
                 String ipAddress = clientIpAddress + destIp;
                 byte[] ip = ipAddress.getBytes();
-                long ipCheckSum = calculateCheckSum(ip, ip.length);
+                long ipCheckSum = getCRC32(ip);
 
                 byte[] buf = echoReqMessage.getBytes();
                 // Echo check sum is constructed using the echo request message
-                long echoChecksum = calculateCheckSum(buf, buf.length);
+                long echoChecksum = getCRC32(buf);
 
                 // src | dest | checkSum | packetType | Type | Code | checksum | identifier | seq-number
-                byte[] toSend = echoReqPacket(clientIpAddress, destIp, ipCheckSum, "REQ", "8", "0", 
+                byte[] toSend = echoReqPacket(clientIpAddress, destIp, ipCheckSum, "REQ", "8", "0",
                                     echoChecksum, "77", "0");
 
                 System.out.println("\n ==> PING SENDING PACKET CONTAINS: " + new String(toSend));
@@ -485,7 +487,7 @@ public class Client implements Runnable {
                 } catch (IOException e) {
                     System.out.println("\n==> PINGING ERROR");
                 }
-                
+
             } else {
                 System.out.println("\n==> INVALID DESTINATION IP ADDRESS");
             }
@@ -517,7 +519,7 @@ public class Client implements Runnable {
         panel.add(controls, BorderLayout.CENTER);
         JOptionPane.showMessageDialog(
             frame, panel);
-    
+
         String message = messageField.getText();
         System.out.println("\n==> MESSAGE IS " + message);
         String destination = destinationField.getText();
@@ -534,7 +536,7 @@ public class Client implements Runnable {
             } else {
                 validIP = isValidIp(destination);
             }
-            
+
             if (validIP == false) {
 
                 System.out.println("\n==> INVALID DESTINATION ADDRESS");
@@ -543,13 +545,13 @@ public class Client implements Runnable {
 
                 byte[] payload = message.getBytes();
 
-                long chksum = calculateCheckSum(payload, payload.length);
+                long chksum = getCRC32(payload);
 
                 byte[] pay = ("|MSG|" + message).getBytes();
-                
+
                 byte[] toSend = messagePacket(clientIpAddress, destination, chksum, pay);
                 System.out.println("\n==> (MessageGui) TO SEND: PACKET CONTAINS " + new String(toSend));
-        
+
                 try {
                     outputStream.write(new String(toSend).length());
                     outputStream.write(toSend);
@@ -565,12 +567,12 @@ public class Client implements Runnable {
 
     /**
      * message packet format: [src] | [recv] | [checksum] | [packetType] | [payload]
-     **/ 
+     **/
     private static byte[] messagePacket(String src, String dest, long checksum, byte[] data) {
-            
+
         byte[] s = src.getBytes();
         byte[] d = dest.getBytes();
-        
+
         byte del = '|';
         byte[] packet = new byte[s.length + d.length + data.length + 5];
         int j = 0;
@@ -602,12 +604,12 @@ public class Client implements Runnable {
     private static boolean isValidIp(String ip) {
         String partitions[] = ip.split("[.]");
         boolean isValid = true;
-        
+
         for (String partition : partitions) {
-            int i = Integer.parseInt(partition); 
-            
-            if (( i < 0 ) || ( partition.length() > 3 ) || ( i > 255 )) { 
-                isValid = false; 
+            int i = Integer.parseInt(partition);
+
+            if (( i < 0 ) || ( partition.length() > 3 ) || ( i > 255 )) {
+                isValid = false;
             }
 
             if (( partition.length() > 1 ) && ( i == 0 )) {
@@ -615,17 +617,17 @@ public class Client implements Runnable {
             }
 
             if (( partition.length() > 1 ) && ( i != 0 ) && ( partition.charAt(0) == '0' )) {
-                isValid = false; 
-            } 
+                isValid = false;
+            }
         }
-  
+
         return isValid;
     }
 
     /**
-     * echo request packet format: src | dest | checkSum | packetType | Type | Code | checksum | identifier | seq-number 
+     * echo request packet format: src | dest | checkSum | packetType | Type | Code | checksum | identifier | seq-number
      **/
-    private static byte[] echoReqPacket(String srcIp, String destIp, long ipCheckSum, 
+    private static byte[] echoReqPacket(String srcIp, String destIp, long ipCheckSum,
         String pacType, String Type, String Code, long echCheckSum, String Identifier, String seqNum) {
 
         byte[] src = (srcIp + "|").getBytes();
@@ -636,7 +638,7 @@ public class Client implements Runnable {
         byte[] identifier = ("|" + Identifier + "|").getBytes();
         byte[] sequenceNumber = seqNum.getBytes();
 
-        int len = src.length + dest.length + packetType.length + type.length + code.length + 
+        int len = src.length + dest.length + packetType.length + type.length + code.length +
                     identifier.length + sequenceNumber.length + 2 + 2;
         byte[] packet = new byte[len];
 
@@ -656,7 +658,7 @@ public class Client implements Runnable {
         j++;
         packet[j] = (byte) (ipCheckSum);
         j++;
-    
+
         for (int i = 0; i < packetType.length; i++) {
             packet[j] = packetType[i];
             j++;
@@ -690,20 +692,11 @@ public class Client implements Runnable {
         return packet;
     }
 
-    // Reference this code
-    private static synchronized long calculateCheckSum(byte[] buf, int length) {
-        int i = 0;
-        long sum = 0;
-        
-        while (length > 0) {
-                sum += (buf[i++]&0xff) << 8;
-                if ((--length)==0) break;
-                sum += (buf[i++]&0xff);
-                --length;
-        }
-        
-        return (~((sum & 0xFFFF)+(sum >> 16)))&0xFFFF;
-    }
+    private static long getCRC32(byte[] raw) {
+		Checksum chkSum = new CRC32();
+		chkSum.update(raw, 0, raw.length);
+		return chkSum.getValue();
+	}
 
     /**
      * echo reply packetformat: src | dest | checkSum | packetType | Type | Code | checksum | identifier | seq-number
@@ -719,12 +712,12 @@ public class Client implements Runnable {
         byte[] identifier = ("|" + Identifier + "|").getBytes();
         byte[] sequenceNumber = seqNum.getBytes();
 
-        int len = src.length + dest.length + packetType.length + type.length + code.length + 
+        int len = src.length + dest.length + packetType.length + type.length + code.length +
                     identifier.length + sequenceNumber.length + 2 + 2;
         byte[] packet = new byte[len];
 
         int j = 0;
-                    
+
         for (int i = 0; i < src.length; i++) {
             packet[j] = src[i];
             j++;
@@ -759,7 +752,7 @@ public class Client implements Runnable {
         j++;
         packet[j] = (byte) (echoCheckSum);
         j++;
-    
+
         for (int i = 0; i < identifier.length; i++) {
             packet[j] = identifier[i];
             j++;
