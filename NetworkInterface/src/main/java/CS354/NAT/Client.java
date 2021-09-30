@@ -39,26 +39,26 @@ public class Client implements Runnable {
         
         try {
             
-            dataSoc = new DatagramSocket();
-            byte[] buf = "TESTING".getBytes();
+            // dataSoc = new DatagramSocket();
+            // byte[] buf = "TESTING".getBytes();
     
-            // Send
-            InetAddress iAdd = InetAddress.getByName("255.255.255.255");
-            DatagramPacket dataPack = new DatagramPacket(buf, buf.length, iAdd, 8002);
-            System.out.println("check");
-            dataSoc.send(dataPack);
-            String data = new String(dataPack.getData());
-            System.out.println("\n==> DATA PACKET CONTENT: " + data);
+            // // Send
+            // InetAddress iAdd = InetAddress.getByName("255.255.255.255");
+            // DatagramPacket dataPack = new DatagramPacket(buf, buf.length, iAdd, 8002);
+            // System.out.println("check");
+            // dataSoc.send(dataPack);
+            // String data = new String(dataPack.getData());
+            // System.out.println("\n==> DATA PACKET CONTENT: " + data);
 
-            // Receive
-            byte[] receiveData = new byte["TESTING".length()];
-            DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-            dataSoc.receive(receivePacket);
-            System.out.println("Discovery response received!" + receivePacket.getAddress() + ":" + receivePacket.getPort());
-            System.out.println("Past receive");
+            // // Receive
+            // byte[] receiveData = new byte["TESTING".length()];
+            // DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+            // dataSoc.receive(receivePacket);
+            // System.out.println("Discovery response received!" + receivePacket.getAddress() + ":" + receivePacket.getPort());
+            // System.out.println("Past receive");
 
 
-            socket = new Socket(/*"127.0.0.1"*/"100.78.213.61", 8002);
+            socket = new Socket("127.0.0.1"/*"100.78.213.61"*/, 8002);
         } catch (Exception e) {
             System.out.println("\n=====> Error in Client.java <=====");
         }
@@ -210,7 +210,7 @@ public class Client implements Runnable {
                         }
 
                     } else {
-                        System.out.println("\n==> ERROR: LINE 189");
+                        System.out.println("\n==> ERROR: LINE 213");
                     }
 
                 } else {
@@ -228,34 +228,34 @@ public class Client implements Runnable {
             home.dispose();
         }
     }
+    // dataSoc = new DatagramSocket(8888);
+    // byte[] buf = "TESTING".getBytes();
+
+    // // Send
+    // InetAddress iAdd = InetAddress.getByName("127.0.0.1");
+    // DatagramPacket dataPack = new DatagramPacket(buf, buf.length, iAdd, 8888);
+    // System.out.println("check");
+    // dataSoc.send(dataPack);
+    // String data = new String(dataPack.getData());
+    // System.out.println("\n==> DATA PACKET CONTENT: " + data);
+
+    // // Receive
+    // byte[] receiveData = new byte["TESTING".length()];
+    // DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+    // dataSoc.receive(receivePacket);
+    // System.out.println("Discovery response received!" + receivePacket.getAddress() + ":" + receivePacket.getPort());
+    // System.out.println("Past receive");
 
     private static String DHCP_Client(String status) {
-        String hostIp = /*"127.0.0.1"*/"100.78.213.61";
+        String hostIp = "127.0.0.1"/*"100.78.213.61"*/;
         int port = 8888;
         String proceed = "";
         
         try
         {
-            dataSoc = new DatagramSocket();
+            dataSoc = new DatagramSocket(8888);
             byte[] buf = new byte[256];
 
-            // dataSoc = new DatagramSocket();
-            // byte[] buf = "TESTING".getBytes();
-    
-            // // Send
-            // InetAddress iAdd = InetAddress.getByName("100.64.24.126");
-            // DatagramPacket dataPack = new DatagramPacket(buf, buf.length, iAdd, 8002);
-            // System.out.println("check");
-            // dataSoc.send(dataPack);
-            // String data = new String(dataPack.getData());
-            // System.out.println("\n==> DATA PACKET CONTENT: " + data);
-
-            // // Receive
-            // byte[] receiveData = new byte["TESTING".length()];
-            // DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-            // dataSoc.receive(receivePacket);
-            // System.out.println("Discovery response received!" + receivePacket.getAddress() + ":" + receivePacket.getPort());
-            // System.out.println("Past receive");
             
             // Set the chosen server status
             if (status == "internal") {
@@ -279,6 +279,7 @@ public class Client implements Runnable {
                 // We continuously receive feedback from the server
                 dataSoc.receive(dataPack);
     
+                System.out.println("Past While Recieve");
                 String data = new String(dataPack.getData());
                 System.out.println("\n==> RECV PACKET CONTENT: " + data);
 
