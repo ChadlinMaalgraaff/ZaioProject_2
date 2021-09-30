@@ -75,18 +75,8 @@ public class NAT {
 
     private static boolean DHCP_Check(DatagramSocket sock) throws IOException {
     	System.out.println("DHCP Called");
-    	/*byte[] raw = new byte[256];
-    	byte[] reply = new byte[256];
-    	byte[] greet = ("HELLO").getBytes();
-    	DatagramPacket packet = new DatagramPacket(raw, raw.length);
-    	sock.receive(packet);
-        System.out.println("RECEIVED");
-    	int port = packet.getPort();
-    	InetAddress addr = packet.getAddress();
-    	System.out.println("addr: "+addr.getHostAddress()+" - name: "+addr.getHostName());
-    	DatagramPacket handshake = new DatagramPacket(greet, greet.length, addr, port);
-    	sock.send(handshake);*/
     	while (true) {
+    	    System.out.println("loop");
             byte[] raw = new byte[256];
             byte[] reply = new byte[256];
     		DatagramPacket packet = new DatagramPacket(raw, raw.length);
@@ -94,8 +84,7 @@ public class NAT {
     		int port = packet.getPort();
     		InetAddress addr = packet.getAddress();
 
-    		switch (raw[0]) {
-			case 'd':
+			if (raw[0] == 'd') {
                 System.out.println("d");
 				if(activeClients.size() == pool_size) {
 					reply[0] = 'd';
@@ -104,14 +93,12 @@ public class NAT {
 				}
 				packet = new DatagramPacket(reply, reply.length, addr, port);
 				sock.send(packet);
-				break;
-			case 'm':
+            } else if (raw[0] == 'm') {
                 System.out.println("m");
 				reply = String.format("m|%s|%s", MAC, IP).getBytes();
 				packet = new DatagramPacket(reply, reply.length, addr, port);
 				sock.send(packet);
-				break;
-			case 'n':
+            } else if (raw[0] == 'n') {
                 System.out.println("n");
 				String ip = "", mac = "", p = "";
 				if(activeClients.size() == pool_size) {
@@ -124,8 +111,7 @@ public class NAT {
 				}
 				packet = new DatagramPacket(reply, reply.length, addr, port);
 				sock.send(packet);
-				break;
-			case 'a':
+            } else if (raw[0] == 'a') {
                 System.out.println("a");
 				String content = new String(packet.getData());
 				String[] setup = content.split("\\|");
@@ -140,10 +126,10 @@ public class NAT {
 				macs.remove(macAddr);
 				ports.remove(ip_port[1]);
 				return true;
-			case 'r':
+            } else if (raw[0] == 'r') {
                 System.out.println("r");
 				return false;
-			case 'e':
+            } else if (raw[0] == 'e') {
                 System.out.println("e");
 				boolean result;
 				if (activeClients.size() == pool_size) {
@@ -161,10 +147,9 @@ public class NAT {
 				packet = new DatagramPacket(reply, reply.length, addr, port);
 				sock.send(packet);
 				return result;
-			default:
+            } else {
 				System.out.println("\nUNKNOWN COMMAND\n");
-				break;
-			}
+            }
     	}
     }
 }
