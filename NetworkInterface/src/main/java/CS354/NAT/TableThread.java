@@ -3,6 +3,8 @@ package CS354.NAT;
 import java.io.DataOutputStream;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.zip.CRC32;
+import java.util.zip.Checksum;
 
 public class TableThread extends Thread{
 
@@ -17,7 +19,6 @@ public class TableThread extends Thread{
 			try {
 				Thread.sleep(60000*10);
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -37,7 +38,7 @@ public class TableThread extends Thread{
 				}
 				try {
 					byte[] raw = (NAT.IP + removeKey).getBytes();
-					long rawCheck = calCheckSum(raw, raw.length);
+					long rawCheck = getCRC32(raw);
 					DataOutputStream candidateOut = NAT.activeClients.get(removeKey);
 					byte[] packet = String.format("%s|%s|%l|LEV", NAT.IP, removeKey, (rawCheck >> 8) + rawCheck).getBytes();
 					candidateOut.write(packet.length);
@@ -50,16 +51,10 @@ public class TableThread extends Thread{
 		}
 	}
 
-	private long calCheckSum(byte[] raw, int length) {
-		int i = 0;
-		long sum = 0;
-		while (length > 0) {
-			sum += (raw[i++]&0xff) << 8;
-			if ((--length)==0) break;
-			sum += (raw[i++]&0xff);
-			--length;
-		}
-		return (~((sum & 0xFFFF)+(sum >> 16))) & 0xFFFF;
+    private long getCRC32(byte[] raw) {
+		Checksum chkSum = new CRC32();
+		chkSum.update(raw, 0, raw.length);
+		return chkSum.getValue();
 	}
 
 	private static synchronized void clientRemove(String candidateKey) {

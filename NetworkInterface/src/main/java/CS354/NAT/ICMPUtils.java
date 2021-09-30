@@ -1,10 +1,13 @@
 package CS354.NAT;
 
+import java.util.zip.CRC32;
+import java.util.zip.Checksum;
+
 public class ICMPUtils {
 	public static synchronized byte[] destUnreach(String dropped, int code, String reply) {
 		String err = String.format("3 Destination %s unreachable", (code == 0)? "net":"host");
 		byte[] temp = err.getBytes();
-		long check = calCheckSum(temp, temp.length);
+		long check = getCRC32(temp);
 		byte[] out = creatErrPack(dropped, check, reply);
 		return out;
 	}
@@ -27,15 +30,9 @@ public class ICMPUtils {
 		return null;
 	}
 
-	private static long calCheckSum(byte[] raw, int length) {
-		int i = 0;
-		long sum = 0;
-		while (length > 0) {
-			sum += (raw[i++]&0xff) << 8;
-			if ((--length)==0) break;
-			sum += (raw[i++]&0xff);
-			--length;
-		}
-		return (~((sum & 0xFFFF)+(sum >> 16))) & 0xFFFF;
+    private static long getCRC32(byte[] raw) {
+		Checksum chkSum = new CRC32();
+		chkSum.update(raw, 0, raw.length);
+		return chkSum.getValue();
 	}
 }
