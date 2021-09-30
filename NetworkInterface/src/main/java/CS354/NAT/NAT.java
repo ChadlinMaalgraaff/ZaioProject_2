@@ -32,15 +32,18 @@ public class NAT {
         initialise();
         
         table = new HashMap<String, ClientInfo>();
+        activeClients = new ConcurrentHashMap<String, DataOutputStream>();
         IP = IPUtils.NAT_IP();
-        MAC = macs.get(0);
-        macs.remove(0);
+        MAC = macs.remove(0);
+        //macs.remove(0);
+        System.out.println("MAC: "+MAC);
         
         try {
         	server = new ServerSocket(8000);
         } catch (Exception e) {
 			System.err.println(e);
 		}
+        System.out.println("Server Start");
         
         DatagramSocket socket = new DatagramSocket(8888);
         TableThread manager = new TableThread();
@@ -49,6 +52,7 @@ public class NAT {
         while (true) {
         	if (DHCP_Check(socket)) {
         		try {
+        			System.out.println("Client confirmed");
         			client = server.accept();
         			ClientThread user = new ClientThread(client, FakeIP);
         			user.start();
@@ -71,6 +75,7 @@ public class NAT {
     }
     
     private static boolean DHCP_Check(DatagramSocket sock) throws IOException {
+    	System.out.println("DHCP Called");
     	while (true) {
     		byte[] raw = new byte[256];
     		byte[] reply = new byte[256];
