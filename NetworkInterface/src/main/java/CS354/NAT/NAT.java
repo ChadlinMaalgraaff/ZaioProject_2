@@ -39,7 +39,7 @@ public class NAT {
         System.out.println("MAC: "+MAC);
         
         try {
-        	server = new ServerSocket(8000);
+        	server = new ServerSocket(8002);
         } catch (Exception e) {
 			System.err.println(e);
 		}

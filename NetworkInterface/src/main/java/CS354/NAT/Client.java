@@ -36,9 +36,29 @@ public class Client implements Runnable {
 
         echoReqMessage = "8 Echo Request";
         echoRepMessage = "0 Echo Reply";
-
+        
         try {
-            socket = new Socket("127.0.0.1", 8000);
+            
+            dataSoc = new DatagramSocket();
+            byte[] buf = "TESTING".getBytes();
+    
+            // Send
+            InetAddress iAdd = InetAddress.getByName("255.255.255.255");
+            DatagramPacket dataPack = new DatagramPacket(buf, buf.length, iAdd, 8002);
+            System.out.println("check");
+            dataSoc.send(dataPack);
+            String data = new String(dataPack.getData());
+            System.out.println("\n==> DATA PACKET CONTENT: " + data);
+
+            // Receive
+            byte[] receiveData = new byte["TESTING".length()];
+            DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+            dataSoc.receive(receivePacket);
+            System.out.println("Discovery response received!" + receivePacket.getAddress() + ":" + receivePacket.getPort());
+            System.out.println("Past receive");
+
+
+            socket = new Socket(/*"127.0.0.1"*/"100.78.213.61", 8002);
         } catch (Exception e) {
             System.out.println("\n=====> Error in Client.java <=====");
         }
@@ -210,29 +230,47 @@ public class Client implements Runnable {
     }
 
     private static String DHCP_Client(String status) {
-        System.out.println("===> DHCP CLIENT STARTED <===");
-        String hostIp = "127.0.0.1";
+        String hostIp = /*"127.0.0.1"*/"100.78.213.61";
         int port = 8888;
         String proceed = "";
-
+        
         try
         {
             dataSoc = new DatagramSocket();
             byte[] buf = new byte[256];
 
+            // dataSoc = new DatagramSocket();
+            // byte[] buf = "TESTING".getBytes();
+    
+            // // Send
+            // InetAddress iAdd = InetAddress.getByName("100.64.24.126");
+            // DatagramPacket dataPack = new DatagramPacket(buf, buf.length, iAdd, 8002);
+            // System.out.println("check");
+            // dataSoc.send(dataPack);
+            // String data = new String(dataPack.getData());
+            // System.out.println("\n==> DATA PACKET CONTENT: " + data);
+
+            // // Receive
+            // byte[] receiveData = new byte["TESTING".length()];
+            // DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+            // dataSoc.receive(receivePacket);
+            // System.out.println("Discovery response received!" + receivePacket.getAddress() + ":" + receivePacket.getPort());
+            // System.out.println("Past receive");
+            
             // Set the chosen server status
             if (status == "internal") {
                 buf[0] = 'd';
             } else {
                 buf[0] = 'e';
             }
-
+            
             InetAddress iAdd = InetAddress.getByName(hostIp);
             DatagramPacket dataPack = new DatagramPacket(buf, buf.length, iAdd, port);
-  
+            
             // Send the Server Type choice of the client to the server
             dataSoc.send(dataPack);
-
+            
+            System.out.println("===> DHCP CLIENT STARTED <===");
             while (true) {
 
                 byte[] dataBuf = new byte[256];
@@ -286,8 +324,8 @@ public class Client implements Runnable {
                     
                     // Extract the DHCP Server's Ip and Mac Address from the response data
                     String[] split = data.split("\\|");
-                    serverIpAddress = split[1];
-                    serverMacAddress = split[2];
+                    serverIpAddress = split[1]; //split[1];
+                    serverMacAddress = split[2]; //split[2];
                     
                     System.out.println("\n==> SERVER MAC ADDRESS: " + serverMacAddress + "\n==> SERVER IP ADDRESS: " + serverIpAddress);
 

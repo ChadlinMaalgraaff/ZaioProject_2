@@ -7,6 +7,9 @@
   <version>1.0-SNAPSHOT</version>
   <name>NetworkInterface</name>
   <url>http://maven.apache.org</url>
+  <properties>
+    <jvm.options>--illegal-access=permit</jvm.options>
+  </properties>
   <dependencies>
     <dependency>
       <groupId>junit</groupId>
