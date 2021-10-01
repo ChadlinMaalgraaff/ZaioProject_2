@@ -17,6 +17,7 @@ public class TableThread extends Thread{
 		while (true) {
 			tableTrim();
 			try {
+                // Forces thread to execute once every 10 minutes
 				Thread.sleep(60000*10);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
@@ -24,6 +25,9 @@ public class TableThread extends Thread{
 		}
 	}
 
+    /**
+     * Function called to check for inactive clients
+     */
 	public void tableTrim() {
 		for (Map.Entry<String, ClientInfo> record : NAT.table.entrySet()) {
 			String removeKey = record.getKey();
@@ -44,23 +48,33 @@ public class TableThread extends Thread{
 					candidateOut.write(packet.length);
 					candidateOut.write(packet);
 				} catch (Exception e) {
-					System.out.println("\nCLIENT LEAVE ERROR");
+					System.out.println("~ CLIENT LEAVE ERROR");
 				}
 				clientRemove(removeKey);
 			}
 		}
 	}
 
+    /**
+     * Checksum function that uses standard java libraries
+     * @param raw - Byte array that contains the message to be hashed
+     * @return checksum value as long
+     */
     private long getCRC32(byte[] raw) {
-		Checksum chkSum = new CRC32();
-		chkSum.update(raw, 0, raw.length);
-		return chkSum.getValue();
-	}
+        Checksum chkSum = new CRC32();
+        chkSum.update(raw, 0, raw.length);
+        return chkSum.getValue();
+    }
 
+    /**
+     * Function called to remove inactive an inactive client
+     * @param candidateKey - The assigned IP of the client to be remove
+     */
 	private static synchronized void clientRemove(String candidateKey) {
 		String ip = candidateKey.split(":")[0];
 		ClientInfo candidateClient = NAT.table.get(candidateKey);
 		String status = candidateClient.getStatus();
+        System.out.println("~ INITIATING CLIENT REMOVAL");
 		if (status.equals("internal")) {
 			NAT.internal.add(ip);
 			NAT.ports.add(candidateKey.split(":")[1]);
@@ -72,5 +86,6 @@ public class TableThread extends Thread{
 		NAT.clients.remove(candidateKey);
 		NAT.activeClients.remove(candidateKey);
 		NAT.table.remove(candidateKey);
+        NAT.printStats();
 	}
 }

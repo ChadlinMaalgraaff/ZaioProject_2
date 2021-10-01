@@ -38,15 +38,23 @@ public class ClientThread extends Thread{
 		} catch (Exception e) {
 			clientRemove(this.fake_ip);
 		}
-
 	}
 
+    /**
+     * Checksum function that uses standard java libraries
+     * @param raw - Byte array that contains the message to be hashed
+     * @return checksum value as long
+     */
     private static long getCRC32(byte[] raw) {
-		Checksum chkSum = new CRC32();
-		chkSum.update(raw, 0, raw.length);
-		return chkSum.getValue();
-	}
+        Checksum chkSum = new CRC32();
+        chkSum.update(raw, 0, raw.length);
+        return chkSum.getValue();
+    }
 
+    /**
+     * Function called to remove current client when thread is terminated
+     * @param candidateKey - The assigned IP of the client to be remove
+     */
 	private static synchronized void clientRemove(String candidateKey) {
 		String ip = candidateKey.split(":")[0];
 		ClientInfo candidateClient = NAT.table.get(candidateKey);
@@ -62,8 +70,13 @@ public class ClientThread extends Thread{
 		NAT.clients.remove(candidateKey);
 		NAT.activeClients.remove(candidateKey);
 		NAT.table.remove(candidateKey);
+        NAT.printStats();
 	}
 
+    /**
+     * Function that inspects incoming messages from client
+     * @param msg - String array with the contents of the message
+     */
 	private void preparePacket(String[] msg) {
 		ClientInfo src = null, dest = null;
 		ClientInfo portFwd = new ClientInfo("internal", "", "", "", 0, 0);
@@ -76,28 +89,30 @@ public class ClientThread extends Thread{
 		ClientInfo record = NAT.table.get(msg[0]);
 		record.setLast(System.nanoTime());
 		if (src == null) {
-			System.out.println("SOURCE IS NULL");
+			System.out.println("> SOURCE IS NULL");
 		} else if (dest == null && srcStat.equals("internal")) {
-			//
+			System.out.println("> INTERNAL TO EXTERNAL");
 			msg[0] = NAT.IP;
 			sendPacket("ERR1",msg,src);
 		} else if (dest == null && srcStat.equals("external")) {
-			//
+			System.out.println("> EXTERNAL TO OTHER");
 			sendPacket("ERR0",msg,src);
 		} else if (dest != null && src != null) {
 			String destStat = dest.getStatus();
 			if (srcStat.equals("internal")) {
 				if (destStat.equals("internal")) {
-					//
+			        System.out.println("> INTERNAL TO INTERNAL");
 					sendPacket(msg[3],msg,src);
 				} else {
-					//
+			        System.out.println("> INTERNAL TO EXTERNAL");
 					msg[0] = String.format("%s:%s", NAT.IP, msg[0].split(":")[1]);
 					sendPacket(msg[3],msg,src);
 				}
 			} else {
 				if (destStat.equals("internal")) {
+			        System.out.println("> EXTERNAL TO INTERNAL");
 					if (!msg[1].split(":")[0].equals(NAT.IP)) {
+			            System.out.println("> INVALID IP");
 						sendPacket("ERR1",msg,src);
 						return;
 					}
@@ -106,14 +121,21 @@ public class ClientThread extends Thread{
 					msg[1] = ip;
 					sendPacket(msg[3],msg,src);
 				} else {
+			        System.out.println("> EXTERNAL TO EXTERNAL");
 					sendPacket("ERR1",msg,src);
 				}
 			}
 		} else {
-			System.out.println("\nERROR: PACKET SEND FAILED");
+			System.out.println("> ERROR: PACKET SEND FAILED");
 		}
 	}
 
+    /**
+     * Function that contructs and sends packets to clients
+     * @param type - String containing message type code
+     * @param msg - String array containing incoming message info
+     * @param record - ClientInfo object containing message senders details
+     */
 	public void sendPacket(String type, String[] msg, ClientInfo record) {
 		DataOutputStream recvStream;
 		DataOutputStream sendStream;
@@ -142,10 +164,12 @@ public class ClientThread extends Thread{
 							send = send + msg[i] + "|";
 						}
 					}
+			        System.out.println("> SENDING ECHO: "+send);
 					byte[] echoPack = send.getBytes();
 					recvStream.write(echoPack.length);
 					recvStream.write(echoPack);
 				} else {
+			        System.out.println("> ERROR: SENDING ECHO FAILED");
 					sendErrPacket(msg, 1);
 				}
 			} else if (type.equals("MSG") || type.equals("ACK")) {
@@ -155,6 +179,7 @@ public class ClientThread extends Thread{
 				echoCheck[0] = (byte) (Check >> 8);
 				echoCheck[1] = (byte) Check;
 				if (!(new String(echoCheck).trim()).equals(msg[2].trim())) {
+			        System.out.println("> ERROR: CHECKSUM MISMATCH");
 					sendErrPacket(msg, 1);
 				} else {
 					record.setLast(System.nanoTime());
@@ -165,19 +190,30 @@ public class ClientThread extends Thread{
 				}
 			}
 		} catch (Exception e) {
-			System.out.println("ERROR: MESSAGE SENDING FAILED");
+			System.out.println("> ERROR: MESSAGE SENDING FAILED");
 			return;
 		}
 	}
 
+    /**
+     * Helper function used to send error information back to sender
+     * @param msg - contents of incoming message
+     * @param code - error code to be sent back to sender
+     */
 	private static void sendErrPacket(String[] msg, int code) throws IOException {
 		DataOutputStream sendStream = NAT.activeClients.get(msg[0]);
 		String dropped = String.format("%s|%s|%s|ERR|3|%d|", msg[0],msg[1],msg[2],code);
+	    System.out.println("> DROPPED PACKET: "+new String(dropped));
 		byte[] dropPack = ICMPUtils.destUnreach(dropped, code, msg[4]);
 		sendStream.write(dropPack.length);
 		sendStream.write(dropPack);
 	}
 
+    /**
+     * Helper function used to find the IP address associated with a specific port
+     * @param port - supplied port number
+     * @return IP address linked to the given port number
+     */
 	private static String portMatch(String port) {
 		for (Map.Entry<String, ClientInfo> record : NAT.table.entrySet()) {
 			if (record.getValue().getPort().equals(port)) {
